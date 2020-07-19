@@ -136,10 +136,11 @@ class HwndElementInfo(ElementInfo):
     def children(self, **kwargs):
         """Return a list of immediate children of the window"""
         class_name = kwargs.get('class_name', None)
-        title = kwargs.get('name', None)
+        title = kwargs.get('title', None)
         control_type = kwargs.get('control_type', None)
-        process = kwargs.get('process', None)
-        # TODO: 'cache_enable' and 'depth' are ignored so far
+        parent = kwargs.get('parent', None)
+        depth = kwargs.get('depth', None)
+        # TODO: 'cache_enable' is ignored so far
 
         # this will be filled in the callback function
         child_elements = []
@@ -149,8 +150,23 @@ class HwndElementInfo(ElementInfo):
         def enum_window_proc(hwnd, lparam):
             """Called for each window - adds wrapped elements to a list"""
             element = HwndElementInfo(hwnd)
-            if process is not None and process != element.pid:
+            if parent is not None and parent != element.parent:
                 return True
+            if depth is not None:
+                def get_depth(child, referent):
+                    parent=child.parent
+                    if parent is None:
+                        return None
+                    if( referent == parent ):
+                        return 1
+                    parent_depth=get_depth( parent, referent )
+                    if parent_depth is None:
+                        return None
+                    return parent_depth + 1
+
+                child_depth = get_depth( element, self )
+                if child_depth != depth:
+                    return True
             if class_name is not None and class_name != element.class_name:
                 return True
             if title is not None and title != element.rich_text:
